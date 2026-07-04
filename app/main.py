@@ -1,11 +1,16 @@
-from database import get_connection
+from services.product_crud import view_products
+from services.product_crud import add_product
+from services.product_crud import search_product
+from services.product_crud import update_product
+from services.product_crud import delete_product
 
-try:
-    conn = get_connection()
-    print("✅ Connected Successfully!")
 
-    conn.close()
 
-except Exception as e:
-    print("❌ Connection Failed")
-    print(e)
+
+
+
+view_products()
+add_product()
+search_product()
+update_product()
+delete_product()
