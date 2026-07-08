@@ -39,7 +39,43 @@ def add_product():
     product_name = input("Enter Product Name: ")
     cost_price = float(input("Enter Cost Price: "))
     selling_price = float(input("Enter Selling Price: "))
+    print("\n========== AVAILABLE SUPPLIERS ==========\n")
+
+    cursor.execute("""
+        SELECT
+           SupplierID,
+           SupplierName
+        FROM Suppliers
+        ORDER BY SupplierID
+    """)
+
+    suppliers = cursor.fetchall()
+
+    for supplier in suppliers:
+
+        print(
+        f"{supplier.SupplierID} | "
+        f"{supplier.SupplierName}"
+    )
+
+    print()
     supplier_id = int(input("Enter Supplier ID: "))
+    
+    print("\n========== AVAILABLE CATEGORIES ==========\n")
+    cursor.execute("""
+        SELECT
+             CategoryID,
+             CategoryName
+        FROM Categories
+        ORDER BY CategoryID
+    """)
+    categories = cursor.fetchall()
+    for category in categories:
+         print( 
+              f"{category.CategoryID} | "
+              f"{category.CategoryName}"
+         )
+    print()
     category_id = int(input("Enter Category ID: "))
 
     cursor.execute("""
