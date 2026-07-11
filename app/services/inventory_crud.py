@@ -1,5 +1,6 @@
 from database import get_connection
-
+from utils.display import show_products
+from utils.display import print_header
 
 def view_inventory():
 
@@ -8,29 +9,40 @@ def view_inventory():
 
     cursor.execute("""
         SELECT
-            InventoryID,
-            ProductID,
-            Quantity,
-            ReorderLevel,
-            LastUpdated
-        FROM Inventory
-        ORDER BY InventoryID
-    """)
+
+            I.InventoryID,
+
+            P.ProductName,
+
+            I.Quantity,
+
+            I.ReorderLevel,
+
+            I.LastUpdated
+
+        FROM Inventory AS I
+
+        INNER JOIN Products AS P
+            ON I.ProductID = P.ProductID
+
+        ORDER BY I.InventoryID""")
 
     inventory = cursor.fetchall()
 
-    print("\n========== INVENTORY ==========\n")
+    print_header("INVENTORY")
+    print("ID | Product | Quantity | Reorder | Last Updated")
+    print("-" * 90)
 
     for item in inventory:
 
         print(
             f"{item.InventoryID} | "
-            f"Product ID: {item.ProductID} | "
+            f"{item.ProductName} | "
             f"Qty: {item.Quantity} | "
             f"Reorder: {item.ReorderLevel} | "
             f"{item.LastUpdated}"
         )
-
+    
     cursor.close()
     conn.close()
 
@@ -40,26 +52,7 @@ def add_inventory():
     conn = get_connection()
     cursor = conn.cursor()
 
-    print("\n========== AVAILABLE PRODUCTS ==========\n")
-
-    cursor.execute("""
-        SELECT
-            ProductID,
-            ProductName
-        FROM Products
-        ORDER BY ProductID
-    """)
-
-    products = cursor.fetchall()
-
-    for product in products:
-
-        print(
-            f"{product.ProductID} | "
-            f"{product.ProductName}"
-        )
-
-    print()
+    show_products()
 
     product_id = int(input("Enter Product ID: "))
     quantity = int(input("Enter Quantity: "))

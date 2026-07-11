@@ -1,4 +1,5 @@
 from database import get_connection
+from utils.display import print_header
 
 
 def view_payments():
@@ -8,26 +9,48 @@ def view_payments():
 
     cursor.execute("""
         SELECT
-            PaymentID,
-            OrderID,
-            PaymentDate,
-            PaymentMethod,
-            Amount,
-            PaymentStatus,
-            TransactionReference
-        FROM Payments
-        ORDER BY PaymentID
-    """)
+
+            P.PaymentID,
+
+            P.OrderID,
+
+            C.FirstName,
+
+            C.LastName,
+
+            P.PaymentDate,
+
+            P.PaymentMethod,
+
+            P.Amount,
+
+            P.PaymentStatus,
+
+            P.TransactionReference
+
+        FROM Payments AS P
+
+        INNER JOIN Orders AS O
+            ON P.OrderID = O.OrderID
+
+        INNER JOIN Customers AS C
+            ON O.CustomerID = C.CustomerID
+
+        ORDER BY P.PaymentID""")
 
     payments = cursor.fetchall()
 
-    print("\n========== PAYMENTS ==========\n")
+    print_header("\nPAYMENTS\n")
+    print("ID | Order | Customer | Method | Amount | Status")
+    print("-" * 100)    
+
 
     for payment in payments:
 
         print(
             f"{payment.PaymentID} | "
-            f"Order ID: {payment.OrderID} | "
+            f"Order: {payment.OrderID} | "
+            f"{payment.FirstName} {payment.LastName} | "
             f"{payment.PaymentDate} | "
             f"{payment.PaymentMethod} | "
             f"₹{payment.Amount} | "
@@ -48,7 +71,8 @@ def add_payment():
 
     cursor.execute("""
         SELECT
-            OrderID
+            OrderID,
+            TotalAmount
         FROM Orders
         ORDER BY OrderID
     """)
@@ -57,11 +81,38 @@ def add_payment():
 
     for order in orders:
 
-        print(order.OrderID)
+        print(
+            f"{order.OrderID} | "
+            f"Total Amount : ₹{order.TotalAmount}"
+        )
 
     print()
 
     order_id = int(input("Enter Order ID: "))
+
+    # Check whether Order exists
+
+    cursor.execute("""
+        SELECT
+            TotalAmount
+        FROM Orders
+        WHERE OrderID = ?
+    """,
+    (order_id,)
+    )
+
+    order = cursor.fetchone()
+
+    if order is None:
+
+        print("\n❌ Order Not Found.")
+
+        cursor.close()
+        conn.close()
+
+        return
+
+    order_total = order.TotalAmount
 
     print("\nPayment Methods")
     print("Cash")
@@ -72,6 +123,30 @@ def add_payment():
     payment_method = input("\nEnter Payment Method: ")
 
     amount = float(input("Enter Amount: "))
+
+    # Validation 1
+
+    if amount <= 0:
+
+        print("\n❌ Payment amount must be greater than zero.")
+
+        cursor.close()
+        conn.close()
+
+        return
+
+    # Validation 2
+
+    if amount > order_total:
+
+        print("\n❌ Payment exceeds Order Total.")
+
+        print(f"Order Total : ₹{order_total}")
+
+        cursor.close()
+        conn.close()
+
+        return
 
     print("\nPayment Status")
     print("Pending")
@@ -108,8 +183,7 @@ def add_payment():
 
     cursor.close()
     conn.close()
-
-
+# -------------------------------------------------------------
 def search_payment():
 
     conn = get_connection()
@@ -119,15 +193,34 @@ def search_payment():
 
     cursor.execute("""
         SELECT
-            PaymentID,
-            OrderID,
-            PaymentDate,
-            PaymentMethod,
-            Amount,
-            PaymentStatus,
-            TransactionReference
-        FROM Payments
-        WHERE PaymentID = ?
+
+            P.PaymentID,
+
+            P.OrderID,
+
+            C.FirstName,
+
+            C.LastName,
+
+            P.PaymentDate,
+
+            P.PaymentMethod,
+
+            P.Amount,
+
+            P.PaymentStatus,
+
+            P.TransactionReference
+
+        FROM Payments AS P
+
+        INNER JOIN Orders AS O
+            ON P.OrderID = O.OrderID
+
+        INNER JOIN Customers AS C
+            ON O.CustomerID = C.CustomerID
+
+        WHERE P.PaymentID = ?
     """,
     (payment_id,)
     )
@@ -140,21 +233,19 @@ def search_payment():
 
     else:
 
-        print("\n========== PAYMENT ==========\n")
+        print_header("Payment")
 
-        print(
-            f"{payment.PaymentID} | "
-            f"Order ID: {payment.OrderID} | "
-            f"{payment.PaymentDate} | "
-            f"{payment.PaymentMethod} | "
-            f"₹{payment.Amount} | "
-            f"{payment.PaymentStatus} | "
-            f"{payment.TransactionReference}"
-        )
+        print(f"Payment ID : {payment.PaymentID}")
+        print(f"Order ID   : {payment.OrderID}")
+        print(f"Customer   : {payment.FirstName} {payment.LastName}")
+        print(f"Date       : {payment.PaymentDate}")
+        print(f"Method     : {payment.PaymentMethod}")
+        print(f"Amount     : ₹{payment.Amount}")
+        print(f"Status     : {payment.PaymentStatus}")
+        print(f"Reference  : {payment.TransactionReference}")
 
     cursor.close()
     conn.close()
-
 
 def update_payment():
 

@@ -1,5 +1,6 @@
+import pyodbc
 from database import get_connection
-
+from utils.display import print_header
 
 def view_customers():
 
@@ -34,51 +35,130 @@ def view_customers():
     conn.close()
 
 
+import pyodbc
+
 def add_customer():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    first_name = input("Enter First Name: ")
-    last_name = input("Enter Last Name: ")
-    email = input("Enter Email: ")
-    phone = input("Enter Phone Number: ")
-    address = input("Enter Address: ")
-    city = input("Enter City: ")
-    state = input("Enter State: ")
-    postal_code = input("Enter Postal Code: ")
+    try:
 
-    cursor.execute("""
-        INSERT INTO Customers
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        print_header("Add Customer")
+
+        first_name = input("Enter First Name: ").strip()
+
+        if not first_name.replace(" ", "").isalpha():
+
+            print("\n❌ First Name should contain only letters.")
+            return
+
+        last_name = input("Enter Last Name: ").strip()
+
+        if not last_name.replace(" ", "").isalpha():
+
+            print("\n❌ Last Name should contain only letters.")
+            return
+
+        email = input("Enter Email: ").strip()
+
+        if "@" not in email or "." not in email:
+
+            print("\n❌ Invalid Email Address.")
+            return
+
+        phone = input("Enter Phone Number: ").strip()
+
+        if not phone.isdigit():
+
+            print("\n❌ Phone Number should contain only digits.")
+            return
+
+        if len(phone) != 10:
+
+            print("\n❌ Phone Number must be exactly 10 digits.")
+            return
+
+        address = input("Enter Address: ").strip()
+
+        city = input("Enter City: ").strip()
+
+        if not city.replace(" ", "").isalpha():
+
+            print("\n❌ City should contain only letters.")
+            return
+
+        state = input("Enter State: ").strip()
+
+        if not state.replace(" ", "").isalpha():
+
+            print("\n❌ State should contain only letters.")
+            return
+
+        postal_code = input("Enter Postal Code: ").strip()
+
+        if not postal_code.isdigit():
+
+            print("\n❌ Postal Code should contain only digits.")
+            return
+
+        if len(postal_code) != 6:
+
+            print("\n❌ Postal Code must be exactly 6 digits.")
+            return
+
+        cursor.execute("""
+            INSERT INTO Customers
+            (
+                FirstName,
+                LastName,
+                Email,
+                Phone,
+                Address,
+                City,
+                State,
+                PostalCode
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
         (
-            FirstName,
-            LastName,
-            Email,
-            Phone,
-            Address,
-            City,
-            State,
-            PostalCode
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """,
-    (
-        first_name,
-        last_name,
-        email,
-        phone,
-        address,
-        city,
-        state,
-        postal_code
-    ))
+            first_name,
+            last_name,
+            email,
+            phone,
+            address,
+            city,
+            state,
+            postal_code
+        ))
 
-    conn.commit()
+        conn.commit()
 
-    print("\n✅ Customer Added Successfully.")
+        print("\n✅ Customer Added Successfully.")
 
-    cursor.close()
-    conn.close()
+    except pyodbc.IntegrityError:
+
+        print("\n❌ Database Error.")
+
+        print("Possible reasons:")
+
+        print("- Email already exists.")
+        print("- Customer violates a database constraint.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
 
 
 def search_customer():
@@ -127,39 +207,95 @@ def search_customer():
 
 def update_customer():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    customer_id = int(input("Enter Customer ID to Update: "))
+    try:
 
-    cursor.execute(
-        """
-        SELECT CustomerID
-        FROM Customers
-        WHERE CustomerID = ?
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        print_header("Update Customer")
+
+        customer_id = int(input("Enter Customer ID to Update: "))
+
+        cursor.execute("""
+            SELECT CustomerID
+            FROM Customers
+            WHERE CustomerID = ?
         """,
         (customer_id,)
-    )
+        )
 
-    customer = cursor.fetchone()
+        customer = cursor.fetchone()
 
-    if customer is None:
+        if customer is None:
 
-        print("\n❌ Customer Not Found.")
+            print("\n❌ Customer Not Found.")
+            return
 
-    else:
+        first_name = input("Enter New First Name: ").strip()
 
-        first_name = input("Enter New First Name: ")
-        last_name = input("Enter New Last Name: ")
-        email = input("Enter New Email: ")
-        phone = input("Enter New Phone Number: ")
-        address = input("Enter New Address: ")
-        city = input("Enter New City: ")
-        state = input("Enter New State: ")
-        postal_code = input("Enter New Postal Code: ")
+        if not first_name.replace(" ", "").isalpha():
 
-        cursor.execute(
-            """
+            print("\n❌ First Name should contain only letters.")
+            return
+
+        last_name = input("Enter New Last Name: ").strip()
+
+        if not last_name.replace(" ", "").isalpha():
+
+            print("\n❌ Last Name should contain only letters.")
+            return
+
+        email = input("Enter New Email: ").strip()
+
+        if "@" not in email or "." not in email:
+
+            print("\n❌ Invalid Email Address.")
+            return
+
+        phone = input("Enter New Phone Number: ").strip()
+
+        if not phone.isdigit():
+
+            print("\n❌ Phone Number should contain only digits.")
+            return
+
+        if len(phone) != 10:
+
+            print("\n❌ Phone Number must be exactly 10 digits.")
+            return
+
+        address = input("Enter New Address: ").strip()
+
+        city = input("Enter New City: ").strip()
+
+        if not city.replace(" ", "").isalpha():
+
+            print("\n❌ City should contain only letters.")
+            return
+
+        state = input("Enter New State: ").strip()
+
+        if not state.replace(" ", "").isalpha():
+
+            print("\n❌ State should contain only letters.")
+            return
+
+        postal_code = input("Enter New Postal Code: ").strip()
+
+        if not postal_code.isdigit():
+
+            print("\n❌ Postal Code should contain only digits.")
+            return
+
+        if len(postal_code) != 6:
+
+            print("\n❌ Postal Code must be exactly 6 digits.")
+            return
+
+        cursor.execute("""
             UPDATE Customers
             SET
                 FirstName = ?,
@@ -171,64 +307,109 @@ def update_customer():
                 State = ?,
                 PostalCode = ?
             WHERE CustomerID = ?
-            """,
-            (
-                first_name,
-                last_name,
-                email,
-                phone,
-                address,
-                city,
-                state,
-                postal_code,
-                customer_id
-            )
-        )
+        """,
+        (
+            first_name,
+            last_name,
+            email,
+            phone,
+            address,
+            city,
+            state,
+            postal_code,
+            customer_id
+        ))
 
         conn.commit()
 
         print("\n✅ Customer Updated Successfully.")
 
-    cursor.close()
-    conn.close()
+    except ValueError:
+
+        print("\n❌ Invalid Customer ID.")
+
+    except pyodbc.IntegrityError:
+
+        print("\n❌ Database Error.")
+
+        print("Possible reasons:")
+
+        print("- Email already exists.")
+        print("- Customer data violates a database constraint.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
 
 
 def delete_customer():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    customer_id = int(input("Enter Customer ID to Delete: "))
+    try:
 
-    cursor.execute(
-        """
-        SELECT CustomerID
-        FROM Customers
-        WHERE CustomerID = ?
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        print_header("Delete Customer")
+
+        customer_id = int(input("Enter Customer ID to Delete: "))
+
+        cursor.execute("""
+            SELECT CustomerID
+            FROM Customers
+            WHERE CustomerID = ?
         """,
         (customer_id,)
-    )
+        )
 
-    customer = cursor.fetchone()
+        customer = cursor.fetchone()
 
-    if customer is None:
+        if customer is None:
 
-        print("\n❌ Customer Not Found.")
+            print("\n❌ Customer Not Found.")
+            return
 
-    else:
-
-        cursor.execute(
-            """
+        cursor.execute("""
             DELETE FROM Customers
             WHERE CustomerID = ?
-            """,
-            (customer_id,)
+        """,
+        (customer_id,)
         )
 
         conn.commit()
 
         print("\n✅ Customer Deleted Successfully.")
 
-    cursor.close()
-    conn.close()
+    except ValueError:
 
+        print("\n❌ Invalid Customer ID.")
+
+    except pyodbc.IntegrityError:
+
+        print("\n❌ Cannot delete customer.")
+
+        print("Possible reasons:")
+        print("- Customer has existing orders.")
+        print("- Delete the customer's orders first.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()

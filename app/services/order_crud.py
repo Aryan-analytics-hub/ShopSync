@@ -1,4 +1,5 @@
 from database import get_connection
+from utils.display import show_customers, print_header
 
 
 def view_orders():
@@ -8,24 +9,39 @@ def view_orders():
 
     cursor.execute("""
         SELECT
-            OrderID,
-            CustomerID,
-            OrderDate,
-            TotalAmount,
-            OrderStatus
-        FROM Orders
-        ORDER BY OrderID
+
+            O.OrderID,
+
+            C.FirstName,
+
+            C.LastName,
+
+            O.OrderDate,
+
+            O.TotalAmount,
+
+            O.OrderStatus
+
+        FROM Orders AS O
+
+        INNER JOIN Customers AS C
+            ON O.CustomerID = C.CustomerID
+
+        ORDER BY O.OrderID
     """)
 
     orders = cursor.fetchall()
 
-    print("\n========== ORDERS ==========\n")
+    print_header("Orders")
+
+    print("Order ID | Customer | Date | Total | Status")
+    print("-" * 90)
 
     for order in orders:
 
         print(
             f"{order.OrderID} | "
-            f"Customer ID: {order.CustomerID} | "
+            f"{order.FirstName} {order.LastName} | "
             f"{order.OrderDate} | "
             f"₹{order.TotalAmount} | "
             f"{order.OrderStatus}"
@@ -35,36 +51,27 @@ def view_orders():
     conn.close()
 
 
+# =========================================================
+
+
 def add_order():
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    print("\n========== AVAILABLE CUSTOMERS ==========\n")
-
-    cursor.execute("""
-        SELECT
-            CustomerID,
-            FirstName,
-            LastName
-        FROM Customers
-        ORDER BY CustomerID
-    """)
-
-    customers = cursor.fetchall()
-
-    for customer in customers:
-
-        print(
-            f"{customer.CustomerID} | "
-            f"{customer.FirstName} {customer.LastName}"
-        )
-
-    print()
+    show_customers()
 
     customer_id = int(input("Enter Customer ID: "))
-    total_amount = float(input("Enter Total Amount: "))
-    order_status = input("Enter Order Status: ")
+
+    print("\nAvailable Status")
+    print("Pending")
+    print("Confirmed")
+    print("Packed")
+    print("Shipped")
+    print("Delivered")
+    print("Cancelled")
+
+    order_status = input("\nEnter Order Status: ")
 
     cursor.execute("""
         INSERT INTO Orders
@@ -77,16 +84,21 @@ def add_order():
     """,
     (
         customer_id,
-        total_amount,
+        0,
         order_status
     ))
 
     conn.commit()
 
-    print("\n✅ Order Added Successfully.")
+    print("\n✅ Order Created Successfully.")
+    print("Total Amount = ₹0")
+    print("Now add products using Order Item Management.")
 
     cursor.close()
     conn.close()
+
+
+# =========================================================
 
 
 def search_order():
@@ -98,13 +110,27 @@ def search_order():
 
     cursor.execute("""
         SELECT
-            OrderID,
-            CustomerID,
-            OrderDate,
-            TotalAmount,
-            OrderStatus
-        FROM Orders
-        WHERE OrderID = ?
+
+            O.OrderID,
+
+            C.FirstName,
+
+            C.LastName,
+
+            O.OrderDate,
+
+            O.TotalAmount,
+
+            O.OrderStatus
+
+        FROM Orders AS O
+
+        INNER JOIN Customers AS C
+            ON O.CustomerID = C.CustomerID
+
+        WHERE O.OrderID = ?
+
+        ORDER BY O.OrderID
     """,
     (order_id,)
     )
@@ -117,18 +143,33 @@ def search_order():
 
     else:
 
-        print("\n========== ORDER ==========\n")
+        print_header("Order")
 
         print(
-            f"{order.OrderID} | "
-            f"Customer ID: {order.CustomerID} | "
-            f"{order.OrderDate} | "
-            f"₹{order.TotalAmount} | "
-            f"{order.OrderStatus}"
+            f"Order ID : {order.OrderID}"
+        )
+
+        print(
+            f"Customer : {order.FirstName} {order.LastName}"
+        )
+
+        print(
+            f"Date     : {order.OrderDate}"
+        )
+
+        print(
+            f"Total    : ₹{order.TotalAmount}"
+        )
+
+        print(
+            f"Status   : {order.OrderStatus}"
         )
 
     cursor.close()
     conn.close()
+
+
+# =========================================================
 
 
 def update_order():
@@ -154,7 +195,16 @@ def update_order():
 
     else:
 
-        status = input("Enter New Order Status: ")
+        print("\nAvailable Status")
+
+        print("Pending")
+        print("Confirmed")
+        print("Packed")
+        print("Shipped")
+        print("Delivered")
+        print("Cancelled")
+
+        status = input("\nEnter New Status: ")
 
         cursor.execute("""
             UPDATE Orders
@@ -172,6 +222,9 @@ def update_order():
 
     cursor.close()
     conn.close()
+
+
+# =========================================================
 
 
 def delete_order():
