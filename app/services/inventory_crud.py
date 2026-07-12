@@ -52,79 +52,144 @@ def add_inventory():
     conn = get_connection()
     cursor = conn.cursor()
 
-    show_products()
+    try:
 
-    product_id = int(input("Enter Product ID: "))
-    quantity = int(input("Enter Quantity: "))
-    reorder_level = int(input("Enter Reorder Level: "))
+        show_products()
 
-    cursor.execute(
-        """
-        INSERT INTO Inventory
-        (
-            ProductID,
-            Quantity,
-            ReorderLevel
+        product_id = int(input("Enter Product ID: "))
+        quantity = int(input("Enter Quantity: "))
+        reorder_level = int(input("Enter Reorder Level: "))
+
+        if quantity < 0:
+
+            print("\n❌ Quantity cannot be negative.")
+            return
+
+        if reorder_level < 0:
+
+            print("\n❌ Reorder Level cannot be negative.")
+            return
+
+        # Check Product Exists
+
+        cursor.execute("""
+            SELECT ProductID
+            FROM Products
+            WHERE ProductID = ?
+        """,
+        (product_id,)
         )
-        VALUES (?, ?, ?)
+
+        product = cursor.fetchone()
+
+        if product is None:
+
+            print("\n❌ Product Not Found.")
+
+            return
+
+        # Check Inventory Already Exists
+
+        cursor.execute("""
+            SELECT InventoryID
+            FROM Inventory
+            WHERE ProductID = ?
+        """,
+        (product_id,)
+        )
+
+        inventory = cursor.fetchone()
+
+        if inventory is not None:
+
+            print("\n❌ Inventory already exists for this product.")
+            print("Inventory is automatically created when a product is added.")
+
+            return
+
+        cursor.execute("""
+            INSERT INTO Inventory
+            (
+                ProductID,
+                Quantity,
+                ReorderLevel
+            )
+            VALUES (?, ?, ?)
         """,
         (
             product_id,
             quantity,
             reorder_level
         )
-    )
+        )
 
-    conn.commit()
+        conn.commit()
 
-    print("\n✅ Inventory Added Successfully.")
+        print("\n✅ Inventory Added Successfully.")
 
-    cursor.close()
-    conn.close()
+    except ValueError:
 
+        print("\n❌ Please enter valid numeric values.")
+
+    finally:
+
+        cursor.close()
+        conn.close()
 
 def search_inventory():
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    product_id = int(input("Enter Product ID: "))
+    try:
 
-    cursor.execute(
-        """
-        SELECT
-            InventoryID,
-            ProductID,
-            Quantity,
-            ReorderLevel,
-            LastUpdated
-        FROM Inventory
-        WHERE ProductID = ?
+        product_id = int(input("Enter Product ID: "))
+
+        cursor.execute("""
+            SELECT
+                I.InventoryID,
+                P.ProductName,
+                I.ProductID,
+                I.Quantity,
+                I.ReorderLevel,
+                I.LastUpdated
+            FROM Inventory AS I
+
+            INNER JOIN Products AS P
+                ON I.ProductID = P.ProductID
+
+            WHERE I.ProductID = ?
         """,
         (product_id,)
-    )
-
-    item = cursor.fetchone()
-
-    if item is None:
-
-        print("\n❌ Inventory Record Not Found.")
-
-    else:
-
-        print("\n========== INVENTORY ==========\n")
-
-        print(
-            f"{item.InventoryID} | "
-            f"Product ID: {item.ProductID} | "
-            f"Qty: {item.Quantity} | "
-            f"Reorder: {item.ReorderLevel} | "
-            f"{item.LastUpdated}"
         )
 
-    cursor.close()
-    conn.close()
+        item = cursor.fetchone()
 
+        if item is None:
+
+            print("\n❌ Inventory Record Not Found.")
+
+        else:
+
+            print("\n========== INVENTORY ==========\n")
+
+            print(
+                f"Inventory ID : {item.InventoryID}\n"
+                f"Product ID   : {item.ProductID}\n"
+                f"Product Name : {item.ProductName}\n"
+                f"Quantity     : {item.Quantity}\n"
+                f"Reorder Level: {item.ReorderLevel}\n"
+                f"Last Updated : {item.LastUpdated}"
+            )
+
+    except ValueError:
+
+        print("\n❌ Please enter a valid Product ID.")
+
+    finally:
+
+        cursor.close()
+        conn.close()
 
 def update_inventory():
 

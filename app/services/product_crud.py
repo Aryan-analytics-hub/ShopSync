@@ -70,11 +70,31 @@ def add_product():
         print_header("Add Product")
 
         product_name = input("Enter Product Name: ").strip()
+
+        if product_name == "":
+
+            print("\n❌ Product Name cannot be empty.")
+            return
+
         description = input("Enter Product Description: ").strip()
 
         cost_price = float(input("Enter Cost Price: "))
         selling_price = float(input("Enter Selling Price: "))
-        
+
+        if cost_price < 0:
+
+            print("\n❌ Cost Price cannot be negative.")
+            return
+
+        if selling_price < 0:
+
+            print("\n❌ Selling Price cannot be negative.")
+            return
+
+        if selling_price < cost_price:
+
+            print("\n❌ Selling Price cannot be less than Cost Price.")
+            return
 
         show_suppliers()
         supplier_id = int(input("Enter Supplier ID: "))
@@ -82,6 +102,7 @@ def add_product():
         show_categories()
         category_id = int(input("Enter Category ID: "))
 
+        # Insert Product and get ProductID
         cursor.execute("""
             INSERT INTO Products
             (
@@ -92,6 +113,7 @@ def add_product():
                 SupplierID,
                 CategoryID
             )
+            OUTPUT INSERTED.ProductID
             VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
@@ -103,35 +125,28 @@ def add_product():
             category_id
         ))
 
-        conn.commit()
-        # Get newly created Product ID
-
-        cursor.execute("""
-            SELECT CAST(SCOPE_IDENTITY() AS INT)
-        """)
-
         product_id = cursor.fetchone()[0]
 
         # Automatically create Inventory record
+        cursor.execute("""
+            INSERT INTO Inventory
+            (
+                ProductID,
+                Quantity,
+                ReorderLevel
+            )
+            VALUES (?, ?, ?)
+        """,
+        (
+            product_id,
+            0,
+            10
+        ))
 
-        # cursor.execute("""
-        #     INSERT INTO Inventory
-        #     (
-        #         ProductID,
-        #         Quantity,
-        #         ReorderLevel
-        #     )
-        #     VALUES (?, ?, ?)
-        # """,
-        # (
-        #     product_id,
-        #     0,
-        #     10
-        # ))
-
-        # conn.commit()
+        conn.commit()
 
         print("\n✅ Product Added Successfully.")
+        print("✅ Inventory record created automatically.")
 
     except ValueError:
 
@@ -142,12 +157,21 @@ def add_product():
         print("\n❌ Database Error")
         print(e)
 
+        print("\nPossible reasons:")
+
         print("- Supplier ID does not exist.")
         print("- Category ID does not exist.")
         print("- Selling Price violates database rules.")
+        print("- Product already exists.")
         print("- Product data violates a database constraint.")
 
+        if conn:
+            conn.rollback()
+
     except Exception as e:
+
+        if conn:
+            conn.rollback()
 
         print(f"\n❌ Unexpected Error: {e}")
 

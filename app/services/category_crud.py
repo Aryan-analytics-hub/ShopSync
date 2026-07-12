@@ -1,4 +1,6 @@
+import pyodbc
 from database import get_connection
+from utils.display import print_header
 
 
 def view_categories():
@@ -33,33 +35,67 @@ def view_categories():
 
 def add_category():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    category_name = input("Enter Category Name: ")
-    description = input("Enter Description: ")
+    try:
 
-    cursor.execute(
-        """
-        INSERT INTO Categories
-        (
-            CategoryName,
-            Description
-        )
-        VALUES (?, ?)
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        print_header("Add Category")
+
+        category_name = input("Enter Category Name: ").strip()
+
+        if category_name == "":
+
+            print("\n❌ Category Name cannot be empty.")
+            return
+
+        if not any(ch.isalpha() for ch in category_name):
+
+            print("\n❌ Category Name must contain at least one alphabet.")
+            return
+
+        description = input("Enter Description: ").strip()
+
+        cursor.execute("""
+            INSERT INTO Categories
+            (
+                CategoryName,
+                Description
+            )
+            VALUES (?, ?)
         """,
         (
             category_name,
             description
-        )
-    )
+        ))
 
-    conn.commit()
+        conn.commit()
 
-    print("\n✅ Category Added Successfully.")
+        print("\n✅ Category Added Successfully.")
 
-    cursor.close()
-    conn.close()
+    except pyodbc.IntegrityError:
+
+        print("\n❌ Database Error.")
+
+        print("Possible reasons:")
+
+        print("- Category already exists.")
+        print("- Category violates a database constraint.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
 
 
 def search_category():
@@ -105,89 +141,152 @@ def search_category():
 
 def update_category():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    category_id = int(input("Enter Category ID to Update: "))
+    try:
 
-    cursor.execute(
-        """
-        SELECT CategoryID
-        FROM Categories
-        WHERE CategoryID = ?
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        print_header("Update Category")
+
+        category_id = int(input("Enter Category ID to Update: "))
+
+        cursor.execute("""
+            SELECT CategoryID
+            FROM Categories
+            WHERE CategoryID = ?
         """,
         (category_id,)
-    )
+        )
 
-    category = cursor.fetchone()
+        category = cursor.fetchone()
 
-    if category is None:
+        if category is None:
 
-        print("\n❌ Category Not Found.")
+            print("\n❌ Category Not Found.")
+            return
 
-    else:
+        category_name = input("Enter New Category Name: ").strip()
 
-        category_name = input("Enter New Category Name: ")
-        description = input("Enter New Description: ")
+        if category_name == "":
 
-        cursor.execute(
-            """
+            print("\n❌ Category Name cannot be empty.")
+            return
+
+        if not any(ch.isalpha() for ch in category_name):
+
+            print("\n❌ Category Name must contain at least one alphabet.")
+            return
+
+        description = input("Enter New Description: ").strip()
+
+        cursor.execute("""
             UPDATE Categories
             SET
                 CategoryName = ?,
                 Description = ?
             WHERE CategoryID = ?
-            """,
-            (
-                category_name,
-                description,
-                category_id
-            )
-        )
+        """,
+        (
+            category_name,
+            description,
+            category_id
+        ))
 
         conn.commit()
 
         print("\n✅ Category Updated Successfully.")
 
-    cursor.close()
-    conn.close()
+    except ValueError:
+
+        print("\n❌ Invalid Category ID.")
+
+    except pyodbc.IntegrityError:
+
+        print("\n❌ Database Error.")
+
+        print("Possible reasons:")
+
+        print("- Category already exists.")
+        print("- Category violates a database constraint.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
+
 
 
 def delete_category():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    category_id = int(input("Enter Category ID to Delete: "))
+    try:
 
-    cursor.execute(
-        """
-        SELECT CategoryID
-        FROM Categories
-        WHERE CategoryID = ?
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        print_header("Delete Category")
+
+        category_id = int(input("Enter Category ID to Delete: "))
+
+        cursor.execute("""
+            SELECT CategoryID
+            FROM Categories
+            WHERE CategoryID = ?
         """,
         (category_id,)
-    )
+        )
 
-    category = cursor.fetchone()
+        category = cursor.fetchone()
 
-    if category is None:
+        if category is None:
 
-        print("\n❌ Category Not Found.")
+            print("\n❌ Category Not Found.")
+            return
 
-    else:
-
-        cursor.execute(
-            """
+        cursor.execute("""
             DELETE FROM Categories
             WHERE CategoryID = ?
-            """,
-            (category_id,)
+        """,
+        (category_id,)
         )
 
         conn.commit()
 
         print("\n✅ Category Deleted Successfully.")
 
-    cursor.close()
-    conn.close()
+    except ValueError:
+
+        print("\n❌ Invalid Category ID.")
+
+    except pyodbc.IntegrityError:
+
+        print("\n❌ Cannot delete category.")
+
+        print("Possible reasons:")
+
+        print("- Category is assigned to one or more products.")
+        print("- Delete or update those products first.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()

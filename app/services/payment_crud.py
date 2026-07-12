@@ -1,3 +1,4 @@
+import pyodbc
 from database import get_connection
 from utils.display import print_header
 
@@ -61,214 +62,90 @@ def view_payments():
     cursor.close()
     conn.close()
 
+# -----------------------------------------add payment------------------
+import pyodbc
 
 def add_payment():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    print("\n========== AVAILABLE ORDERS ==========\n")
+    try:
 
-    cursor.execute("""
-        SELECT
-            OrderID,
-            TotalAmount
-        FROM Orders
-        ORDER BY OrderID
-    """)
+        conn = get_connection()
+        cursor = conn.cursor()
 
-    orders = cursor.fetchall()
+        print_header("ADD PAYMENT")
 
-    for order in orders:
+        print("\n========== AVAILABLE ORDERS ==========\n")
 
-        print(
-            f"{order.OrderID} | "
-            f"Total Amount : ₹{order.TotalAmount}"
+        cursor.execute("""
+            SELECT
+                OrderID,
+                TotalAmount
+            FROM Orders
+            ORDER BY OrderID
+        """)
+
+        orders = cursor.fetchall()
+
+        for order in orders:
+
+            print(f"{order.OrderID} | Total Amount : ₹{order.TotalAmount}")
+
+        print()
+
+        order_id = int(input("Enter Order ID: "))
+
+        cursor.execute("""
+            SELECT TotalAmount
+            FROM Orders
+            WHERE OrderID = ?
+        """,
+        (order_id,)
         )
 
-    print()
+        order = cursor.fetchone()
 
-    order_id = int(input("Enter Order ID: "))
+        if order is None:
 
-    # Check whether Order exists
+            print("\n❌ Order Not Found.")
+            return
 
-    cursor.execute("""
-        SELECT
-            TotalAmount
-        FROM Orders
-        WHERE OrderID = ?
-    """,
-    (order_id,)
-    )
+        order_total = order.TotalAmount
 
-    order = cursor.fetchone()
+        print("\nPayment Methods")
+        print("Cash")
+        print("Card")
+        print("UPI")
+        print("Net Banking")
 
-    if order is None:
+        payment_method = input("\nEnter Payment Method: ").strip().title()
 
-        print("\n❌ Order Not Found.")
+        valid_methods = [
+            "Cash",
+            "Card",
+            "Upi",
+            "Net Banking"
+        ]
 
-        cursor.close()
-        conn.close()
+        if payment_method not in valid_methods:
 
-        return
+            print("\n❌ Invalid Payment Method.")
+            return
 
-    order_total = order.TotalAmount
+        amount = float(input("Enter Amount: "))
 
-    print("\nPayment Methods")
-    print("Cash")
-    print("Card")
-    print("UPI")
-    print("Net Banking")
+        if amount <= 0:
 
-    payment_method = input("\nEnter Payment Method: ")
+            print("\n❌ Payment amount must be greater than zero.")
+            return
 
-    amount = float(input("Enter Amount: "))
+        if amount > order_total:
 
-    # Validation 1
-
-    if amount <= 0:
-
-        print("\n❌ Payment amount must be greater than zero.")
-
-        cursor.close()
-        conn.close()
-
-        return
-
-    # Validation 2
-
-    if amount > order_total:
-
-        print("\n❌ Payment exceeds Order Total.")
-
-        print(f"Order Total : ₹{order_total}")
-
-        cursor.close()
-        conn.close()
-
-        return
-
-    print("\nPayment Status")
-    print("Pending")
-    print("Completed")
-    print("Failed")
-    print("Refunded")
-
-    payment_status = input("\nEnter Payment Status: ")
-
-    transaction_reference = input("Enter Transaction Reference: ")
-
-    cursor.execute("""
-        INSERT INTO Payments
-        (
-            OrderID,
-            PaymentMethod,
-            Amount,
-            PaymentStatus,
-            TransactionReference
-        )
-        VALUES (?, ?, ?, ?, ?)
-    """,
-    (
-        order_id,
-        payment_method,
-        amount,
-        payment_status,
-        transaction_reference
-    ))
-
-    conn.commit()
-
-    print("\n✅ Payment Added Successfully.")
-
-    cursor.close()
-    conn.close()
-# -------------------------------------------------------------
-def search_payment():
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    payment_id = int(input("Enter Payment ID: "))
-
-    cursor.execute("""
-        SELECT
-
-            P.PaymentID,
-
-            P.OrderID,
-
-            C.FirstName,
-
-            C.LastName,
-
-            P.PaymentDate,
-
-            P.PaymentMethod,
-
-            P.Amount,
-
-            P.PaymentStatus,
-
-            P.TransactionReference
-
-        FROM Payments AS P
-
-        INNER JOIN Orders AS O
-            ON P.OrderID = O.OrderID
-
-        INNER JOIN Customers AS C
-            ON O.CustomerID = C.CustomerID
-
-        WHERE P.PaymentID = ?
-    """,
-    (payment_id,)
-    )
-
-    payment = cursor.fetchone()
-
-    if payment is None:
-
-        print("\n❌ Payment Not Found.")
-
-    else:
-
-        print_header("Payment")
-
-        print(f"Payment ID : {payment.PaymentID}")
-        print(f"Order ID   : {payment.OrderID}")
-        print(f"Customer   : {payment.FirstName} {payment.LastName}")
-        print(f"Date       : {payment.PaymentDate}")
-        print(f"Method     : {payment.PaymentMethod}")
-        print(f"Amount     : ₹{payment.Amount}")
-        print(f"Status     : {payment.PaymentStatus}")
-        print(f"Reference  : {payment.TransactionReference}")
-
-    cursor.close()
-    conn.close()
-
-def update_payment():
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    payment_id = int(input("Enter Payment ID: "))
-
-    cursor.execute("""
-        SELECT PaymentID
-        FROM Payments
-        WHERE PaymentID = ?
-    """,
-    (payment_id,)
-    )
-
-    payment = cursor.fetchone()
-
-    if payment is None:
-
-        print("\n❌ Payment Not Found.")
-
-    else:
+            print("\n❌ Payment exceeds Order Total.")
+            print(f"Order Total : ₹{order_total}")
+            return
 
         print("\nPayment Status")
         print("Pending")
@@ -276,7 +153,183 @@ def update_payment():
         print("Failed")
         print("Refunded")
 
-        payment_status = input("\nEnter New Payment Status: ")
+        payment_status = input("\nEnter Payment Status: ").strip().title()
+
+        valid_status = [
+            "Pending",
+            "Completed",
+            "Failed",
+            "Refunded"
+        ]
+
+        if payment_status not in valid_status:
+
+            print("\n❌ Invalid Payment Status.")
+            return
+
+        transaction_reference = input("Enter Transaction Reference: ").strip()
+
+        cursor.execute("""
+            INSERT INTO Payments
+            (
+                OrderID,
+                PaymentMethod,
+                Amount,
+                PaymentStatus,
+                TransactionReference
+            )
+            VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            order_id,
+            payment_method,
+            amount,
+            payment_status,
+            transaction_reference
+        ))
+
+        conn.commit()
+
+        print("\n✅ Payment Added Successfully.")
+
+    except ValueError:
+
+        print("\n❌ Invalid numeric input.")
+
+    except pyodbc.IntegrityError:
+
+        print("\n❌ Database Error.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
+
+
+#  -------------------------------------------------------------
+def search_payment():
+
+    conn = None
+    cursor = None
+
+    try:
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        payment_id = int(input("Enter Payment ID: "))
+
+        cursor.execute("""
+            SELECT
+
+                P.PaymentID,
+                P.OrderID,
+                C.FirstName,
+                C.LastName,
+                P.PaymentDate,
+                P.PaymentMethod,
+                P.Amount,
+                P.PaymentStatus,
+                P.TransactionReference
+
+            FROM Payments AS P
+
+            INNER JOIN Orders AS O
+                ON P.OrderID = O.OrderID
+
+            INNER JOIN Customers AS C
+                ON O.CustomerID = C.CustomerID
+
+            WHERE P.PaymentID = ?
+        """,
+        (payment_id,)
+        )
+
+        payment = cursor.fetchone()
+
+        if payment is None:
+
+            print("\n❌ Payment Not Found.")
+
+        else:
+
+            print_header("Payment")
+
+            print(f"Payment ID : {payment.PaymentID}")
+            print(f"Order ID   : {payment.OrderID}")
+            print(f"Customer   : {payment.FirstName} {payment.LastName}")
+            print(f"Date       : {payment.PaymentDate}")
+            print(f"Method     : {payment.PaymentMethod}")
+            print(f"Amount     : ₹{payment.Amount}")
+            print(f"Status     : {payment.PaymentStatus}")
+            print(f"Reference  : {payment.TransactionReference}")
+
+    except ValueError:
+
+        print("\n❌ Payment ID must be a number.")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
+
+# ==========================================================================
+def update_payment():
+
+    conn = None
+    cursor = None
+
+    try:
+
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        payment_id = int(input("Enter Payment ID: "))
+
+        cursor.execute("""
+            SELECT PaymentID
+            FROM Payments
+            WHERE PaymentID = ?
+        """,
+        (payment_id,)
+        )
+
+        payment = cursor.fetchone()
+
+        if payment is None:
+
+            print("\n❌ Payment Not Found.")
+            return
+
+        print("\nPayment Status")
+        print("Pending")
+        print("Completed")
+        print("Failed")
+        print("Refunded")
+
+        payment_status = input("\nEnter New Payment Status: ").strip().title()
+
+        valid_status = [
+            "Pending",
+            "Completed",
+            "Failed",
+            "Refunded"
+        ]
+
+        if payment_status not in valid_status:
+
+            print("\n❌ Invalid Payment Status.")
+            return
 
         cursor.execute("""
             UPDATE Payments
@@ -292,32 +345,45 @@ def update_payment():
 
         print("\n✅ Payment Updated Successfully.")
 
-    cursor.close()
-    conn.close()
+    except ValueError:
 
+        print("\n❌ Payment ID must be a number.")
 
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
+
+# ===========================================================
 def delete_payment():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    payment_id = int(input("Enter Payment ID: "))
+    try:
 
-    cursor.execute("""
-        SELECT PaymentID
-        FROM Payments
-        WHERE PaymentID = ?
-    """,
-    (payment_id,)
-    )
+        conn = get_connection()
+        cursor = conn.cursor()
 
-    payment = cursor.fetchone()
+        payment_id = int(input("Enter Payment ID: "))
 
-    if payment is None:
+        cursor.execute("""
+            SELECT PaymentID
+            FROM Payments
+            WHERE PaymentID = ?
+        """,
+        (payment_id,)
+        )
 
-        print("\n❌ Payment Not Found.")
+        payment = cursor.fetchone()
 
-    else:
+        if payment is None:
+
+            print("\n❌ Payment Not Found.")
+            return
 
         cursor.execute("""
             DELETE FROM Payments
@@ -330,5 +396,18 @@ def delete_payment():
 
         print("\n✅ Payment Deleted Successfully.")
 
-    cursor.close()
-    conn.close()
+    except ValueError:
+
+        print("\n❌ Payment ID must be a number.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()

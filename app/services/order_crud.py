@@ -1,3 +1,4 @@
+import pyodbc
 from database import get_connection
 from utils.display import show_customers, print_header
 
@@ -56,48 +57,104 @@ def view_orders():
 
 def add_order():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    show_customers()
+    try:
 
-    customer_id = int(input("Enter Customer ID: "))
+        conn = get_connection()
+        cursor = conn.cursor()
 
-    print("\nAvailable Status")
-    print("Pending")
-    print("Confirmed")
-    print("Packed")
-    print("Shipped")
-    print("Delivered")
-    print("Cancelled")
+        print_header("ADD ORDER")
 
-    order_status = input("\nEnter Order Status: ")
+        show_customers()
 
-    cursor.execute("""
-        INSERT INTO Orders
-        (
-            CustomerID,
-            TotalAmount,
-            OrderStatus
+        customer_id = int(input("Enter Customer ID: "))
+
+        cursor.execute(
+            """
+            SELECT CustomerID
+            FROM Customers
+            WHERE CustomerID = ?
+            """,
+            (customer_id,)
         )
-        VALUES (?, ?, ?)
-    """,
-    (
-        customer_id,
-        0,
-        order_status
-    ))
 
-    conn.commit()
+        customer = cursor.fetchone()
 
-    print("\n✅ Order Created Successfully.")
-    print("Total Amount = ₹0")
-    print("Now add products using Order Item Management.")
+        if customer is None:
 
-    cursor.close()
-    conn.close()
+            print("\n❌ Customer Not Found.")
+            return
 
+        print("\nAvailable Status")
+        print("Pending")
+        print("Confirmed")
+        print("Packed")
+        print("Shipped")
+        print("Delivered")
+        print("Cancelled")
 
+        order_status = input("\nEnter Order Status: ").strip().title()
+
+        valid_status = [
+            "Pending",
+            "Confirmed",
+            "Packed",
+            "Shipped",
+            "Delivered",
+            "Cancelled"
+        ]
+
+        if order_status not in valid_status:
+
+            print("\n❌ Invalid Order Status.")
+            return
+
+        cursor.execute(
+            """
+            INSERT INTO Orders
+            (
+                CustomerID,
+                TotalAmount,
+                OrderStatus
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                customer_id,
+                0,
+                order_status
+            )
+        )
+
+        conn.commit()
+
+        print("\n✅ Order Created Successfully.")
+        print("Total Amount = ₹0.00")
+        print("Now add products using Order Item Management.")
+
+    except ValueError:
+
+        print("\n❌ Customer ID must be a number.")
+
+    except pyodbc.IntegrityError:
+
+        print("\n❌ Database Error.")
+        print("- Customer does not exist.")
+        print("- Invalid data supplied.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
 # =========================================================
 
 
@@ -174,29 +231,35 @@ def search_order():
 
 def update_order():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    order_id = int(input("Enter Order ID: "))
+    try:
 
-    cursor.execute("""
-        SELECT OrderID
-        FROM Orders
-        WHERE OrderID = ?
-    """,
-    (order_id,)
-    )
+        conn = get_connection()
+        cursor = conn.cursor()
 
-    order = cursor.fetchone()
+        print_header("UPDATE ORDER")
 
-    if order is None:
+        order_id = int(input("Enter Order ID: "))
 
-        print("\n❌ Order Not Found.")
+        cursor.execute(
+            """
+            SELECT OrderID
+            FROM Orders
+            WHERE OrderID = ?
+            """,
+            (order_id,)
+        )
 
-    else:
+        order = cursor.fetchone()
+
+        if order is None:
+
+            print("\n❌ Order Not Found.")
+            return
 
         print("\nAvailable Status")
-
         print("Pending")
         print("Confirmed")
         print("Packed")
@@ -204,62 +267,118 @@ def update_order():
         print("Delivered")
         print("Cancelled")
 
-        status = input("\nEnter New Status: ")
+        status = input("\nEnter New Status: ").strip().title()
 
-        cursor.execute("""
+        valid_status = [
+            "Pending",
+            "Confirmed",
+            "Packed",
+            "Shipped",
+            "Delivered",
+            "Cancelled"
+        ]
+
+        if status not in valid_status:
+
+            print("\n❌ Invalid Order Status.")
+            return
+
+        cursor.execute(
+            """
             UPDATE Orders
             SET OrderStatus = ?
             WHERE OrderID = ?
-        """,
-        (
-            status,
-            order_id
-        ))
+            """,
+            (
+                status,
+                order_id
+            )
+        )
 
         conn.commit()
 
         print("\n✅ Order Updated Successfully.")
 
-    cursor.close()
-    conn.close()
+    except ValueError:
 
+        print("\n❌ Order ID must be a number.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
 
 # =========================================================
 
 
 def delete_order():
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
 
-    order_id = int(input("Enter Order ID: "))
+    try:
 
-    cursor.execute("""
-        SELECT OrderID
-        FROM Orders
-        WHERE OrderID = ?
-    """,
-    (order_id,)
-    )
+        conn = get_connection()
+        cursor = conn.cursor()
 
-    order = cursor.fetchone()
+        print_header("DELETE ORDER")
 
-    if order is None:
+        order_id = int(input("Enter Order ID to Delete: "))
 
-        print("\n❌ Order Not Found.")
+        cursor.execute(
+            """
+            SELECT OrderID
+            FROM Orders
+            WHERE OrderID = ?
+            """,
+            (order_id,)
+        )
 
-    else:
+        order = cursor.fetchone()
 
-        cursor.execute("""
+        if order is None:
+
+            print("\n❌ Order Not Found.")
+            return
+
+        cursor.execute(
+            """
             DELETE FROM Orders
             WHERE OrderID = ?
-        """,
-        (order_id,)
+            """,
+            (order_id,)
         )
 
         conn.commit()
 
         print("\n✅ Order Deleted Successfully.")
 
-    cursor.close()
-    conn.close()
+    except ValueError:
+
+        print("\n❌ Invalid Order ID.")
+
+    except pyodbc.IntegrityError:
+
+        print("\n❌ Cannot delete order.")
+        print("Possible reasons:")
+        print("- Order contains one or more Order Items.")
+        print("- Delete the Order Items first.")
+
+    except Exception as e:
+
+        print(f"\n❌ Unexpected Error: {e}")
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
