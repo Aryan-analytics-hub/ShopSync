@@ -12,7 +12,7 @@ CREATE TABLE Products
         CHECK (CostPrice >= 0),
 
     SellingPrice DECIMAL(10,2) NOT NULL
-        CHECK (SellingPrice >= CostPrice),
+        CHECK (SellingPrice>=0),
 
     Description VARCHAR(255),
 
