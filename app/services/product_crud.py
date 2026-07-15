@@ -55,7 +55,174 @@ def view_products():
     cursor.close()
     conn.close()
 
+# ----------------------------------------------------------------------------------------------
+def insert_product_gui(
+    product_name,
+    description,
+    cost_price,
+    selling_price,
+    supplier_id,
+    category_id
+):
 
+    conn = None
+    cursor = None
+
+    try:
+
+        conn = get_connection()
+
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO Products
+            (
+                ProductName,
+                Description,
+                CostPrice,
+                SellingPrice,
+                SupplierID,
+                CategoryID
+            )
+            OUTPUT INSERTED.ProductID
+            VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            product_name,
+            description,
+            cost_price,
+            selling_price,
+            supplier_id,
+            category_id
+        ))
+
+        product_id = cursor.fetchone()[0]
+
+        cursor.execute("""
+            INSERT INTO Inventory
+            (
+                ProductID,
+                Quantity,
+                ReorderLevel
+            )
+            VALUES (?, ?, ?)
+        """,
+        (
+            product_id,
+            0,
+            10
+        ))
+
+        conn.commit()
+
+        return True
+
+    except Exception as e:
+
+        if conn:
+            conn.rollback()
+
+        raise e
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conn:
+            conn.close()
+
+#==========Get all Product GUI===================
+def get_all_products():
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+
+            P.ProductID,
+
+            P.ProductName,
+
+            P.Description,
+
+            C.CategoryName,
+
+            S.SupplierName,
+
+            P.CostPrice,
+
+            P.SellingPrice
+
+        FROM Products AS P
+
+        INNER JOIN Categories AS C
+            ON P.CategoryID = C.CategoryID
+
+        INNER JOIN Suppliers AS S
+            ON P.SupplierID = S.SupplierID
+
+        ORDER BY P.ProductID
+    """)
+
+    products = cursor.fetchall()
+
+    cursor.close()
+
+    conn.close()
+
+    return products
+
+#===========Search Proudct GUI================
+def search_products_gui(keyword):
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+
+            P.ProductID,
+
+            P.ProductName,
+
+            P.Description,
+
+            C.CategoryName,
+
+            S.SupplierName,
+
+            P.CostPrice,
+
+            P.SellingPrice
+
+        FROM Products AS P
+
+        INNER JOIN Categories AS C
+            ON P.CategoryID = C.CategoryID
+
+        INNER JOIN Suppliers AS S
+            ON P.SupplierID = S.SupplierID
+
+        WHERE P.ProductName LIKE ?
+
+        ORDER BY P.ProductID
+    """,
+    ('%' + keyword + '%',)
+    )
+
+    products = cursor.fetchall()
+
+    cursor.close()
+
+    conn.close()
+
+    return products
+
+# ----------------------------------------------------------------------------------------------
     # =================================ADD function=============================
 def add_product():
 
