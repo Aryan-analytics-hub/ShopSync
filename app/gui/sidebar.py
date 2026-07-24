@@ -12,6 +12,7 @@ class Sidebar(ctk.CTkFrame):
         ("orderitems", "OrderItem"),
         ("payments", "Payment"),
         ("reports", "Reports"),
+        ("analytics", "Data Analytics"),
         ("dashboard", "Dashboard"),
     ]
 
@@ -100,3 +101,5 @@ class Sidebar(ctk.CTkFrame):
             self.master.show_payments()
         elif key == "reports":
             self.master.show_reports()
+        elif key == "analytics":
+            self.master.show_analytics()

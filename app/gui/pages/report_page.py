@@ -1,6 +1,9 @@
+import csv
 import tkinter as tk
-from tkinter import ttk
-
+from tkinter import filedialog, messagebox, ttk
+from openpyxl import Workbook
+from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
 import customtkinter as ctk
 
 from database import get_connection
@@ -11,6 +14,9 @@ class ReportPage(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent")
 
         self.summary_var = tk.StringVar(value="Select a report to view its details.")
+        self.current_report_title = None
+        self.current_report_headers = ()
+        self.current_report_rows = []
 
         self.report_definitions = [
             ("1. Sales Report", self.load_sales_report),
@@ -68,6 +74,13 @@ class ReportPage(ctk.CTkFrame):
 
         for column in range(3):
             button_frame.grid_columnconfigure(column, weight=1)
+
+        export_frame = ctk.CTkFrame(header, fg_color="transparent")
+        export_frame.grid(row=3, column=0, columnspan=2, padx=20, pady=(0, 20), sticky="ew")
+        export_frame.grid_columnconfigure(0, weight=1)
+        export_frame.grid_columnconfigure(1, weight=1)
+        ctk.CTkButton(export_frame, text="Export CSV", height=38, corner_radius=10, fg_color="#334155", hover_color="#475569", command=self.export_csv).grid(row=0, column=0, padx=(0, 6), sticky="e")
+        ctk.CTkButton(export_frame, text="Export Excel", height=38, corner_radius=10, fg_color="#0F766E", hover_color="#115E59", command=self.export_excel).grid(row=0, column=1, padx=(6, 0), sticky="w")
 
     def _build_report_viewer(self):
         viewer_card = ctk.CTkFrame(
@@ -136,6 +149,92 @@ class ReportPage(ctk.CTkFrame):
         self._set_report_text(content)
         self.summary_var.set(f"{title} loaded with {row_count} records")
 
+    def _set_export_report(self, title, headers, rows):
+        """Store the already displayed report data for reusable CSV/XLSX exporters."""
+        self.current_report_title = title
+        self.current_report_headers = tuple(headers)
+        self.current_report_rows = [tuple(row) for row in rows]
+
+    def _clear_export_report(self):
+        self.current_report_title = None
+        self.current_report_headers = ()
+        self.current_report_rows = []
+
+    def _require_report_for_export(self):
+        if self.current_report_title:
+            return True
+        messagebox.showinfo("No Report Loaded", "Load a report before exporting it.")
+        return False
+
+    def _export_path(self, extension, label):
+        safe_name = (self.current_report_title or "report").replace(" ", "_")
+        return filedialog.asksaveasfilename(
+            title=f"Export {self.current_report_title}",
+            initialfile=f"{safe_name}.{extension}",
+            defaultextension=f".{extension}",
+            filetypes=[(label, f"*.{extension}")],
+        )
+
+    def export_csv(self):
+        if not self._require_report_for_export():
+            return
+        path = self._export_path("csv", "CSV files")
+        if not path:
+            return
+        try:
+            with open(path, "w", newline="", encoding="utf-8-sig") as file:
+                writer = csv.writer(file)
+                writer.writerow(self.current_report_headers)
+                writer.writerows(self.current_report_rows)
+            self.summary_var.set(f"{self.current_report_title} exported successfully.")
+        except PermissionError:
+            messagebox.showerror("Export Failed", "Permission was denied for the selected location.")
+        except OSError as error:
+            messagebox.showerror("Export Failed", f"The report could not be saved.\n\n{error}")
+        except Exception as error:
+            messagebox.showerror("Export Failed", f"Unexpected error while exporting the report.\n\n{error}")
+
+    def export_excel(self):
+        if not self._require_report_for_export():
+            return
+        path = self._export_path("xlsx", "Excel files")
+        if not path:
+            return
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill
+            from openpyxl.worksheet.table import Table, TableStyleInfo
+
+            workbook = Workbook()
+            worksheet = workbook.active
+            worksheet.title = self.current_report_title[:31]
+            worksheet.append(list(self.current_report_headers))
+            for row in self.current_report_rows:
+                worksheet.append(list(row))
+            header_fill = PatternFill("solid", fgColor="1F2937")
+            for cell in worksheet[1]:
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = header_fill
+            worksheet.freeze_panes = "A2"
+            if self.current_report_rows:
+                end_column = worksheet.cell(row=1, column=len(self.current_report_headers)).column_letter
+                table = Table(displayName="ReportData", ref=f"A1:{end_column}{worksheet.max_row}")
+                table.tableStyleInfo = TableStyleInfo(name="TableStyleMedium2", showRowStripes=True, showColumnStripes=False)
+                worksheet.add_table(table)
+            for column_cells in worksheet.columns:
+                width = min(max(len(str(cell.value or "")) for cell in column_cells) + 2, 45)
+                worksheet.column_dimensions[column_cells[0].column_letter].width = max(width, 12)
+            workbook.save(path)
+            self.summary_var.set(f"{self.current_report_title} exported successfully.")
+        except PermissionError:
+            messagebox.showerror("Export Failed", "Permission was denied for the selected location.")
+        except ImportError:
+            messagebox.showerror("Export Unavailable", "Excel export requires openpyxl. Install the project requirements and try again.")
+        except OSError as error:
+            messagebox.showerror("Export Failed", f"The report could not be saved.\n\n{error}")
+        except Exception as error:
+            messagebox.showerror("Export Failed", f"Unexpected error while exporting the report.\n\n{error}")
+
     def load_inventory_report(self):
         try:
             rows = self._fetch_rows(
@@ -167,8 +266,14 @@ class ReportPage(ctk.CTkFrame):
                     f"{status}"
                 )
 
+            self._set_export_report(
+                "Inventory Report", ("Product", "Quantity", "Reorder Level", "Status"),
+                [(row.ProductName, row.Quantity, row.ReorderLevel, "LOW STOCK" if row.Quantity <= row.ReorderLevel else "IN STOCK") for row in rows],
+            )
+
             self._show_report("Inventory Report", "\n".join(lines), len(rows))
         except Exception as error:
+            self._clear_export_report()
             self._set_report_text(f"Failed to load inventory report.\n\n{error}")
             self.summary_var.set("Failed to load inventory report")
 
@@ -207,8 +312,14 @@ class ReportPage(ctk.CTkFrame):
                     f"{row.OrderStatus}"
                 )
 
+            self._set_export_report(
+                "Sales Report", ("Order ID", "Customer", "Date", "Amount", "Status"),
+                [(row.OrderID, f"{row.FirstName} {row.LastName or ''}".strip(), row.OrderDate, row.TotalAmount, row.OrderStatus) for row in rows],
+            )
+
             self._show_report("Sales Report", "\n".join(lines), len(rows))
         except Exception as error:
+            self._clear_export_report()
             self._set_report_text(f"Failed to load sales report.\n\n{error}")
             self.summary_var.set("Failed to load sales report")
 
@@ -245,8 +356,14 @@ class ReportPage(ctk.CTkFrame):
                     f"{row.SellingPrice}"
                 )
 
+            self._set_export_report(
+                "Product Report", ("Product", "Category", "Supplier", "Selling Price"),
+                [(row.ProductName, row.CategoryName, row.SupplierName, row.SellingPrice) for row in rows],
+            )
+
             self._show_report("Product Report", "\n".join(lines), len(rows))
         except Exception as error:
+            self._clear_export_report()
             self._set_report_text(f"Failed to load product report.\n\n{error}")
             self.summary_var.set("Failed to load product report")
 
@@ -289,8 +406,14 @@ class ReportPage(ctk.CTkFrame):
                     f"{row.PaymentStatus}"
                 )
 
+            self._set_export_report(
+                "Payment Report", ("Payment ID", "Order ID", "Customer", "Method", "Amount", "Status"),
+                [(row.PaymentID, row.OrderID, f"{row.FirstName} {row.LastName or ''}".strip(), row.PaymentMethod, row.Amount, row.PaymentStatus) for row in rows],
+            )
+
             self._show_report("Payment Report", "\n".join(lines), len(rows))
         except Exception as error:
+            self._clear_export_report()
             self._set_report_text(f"Failed to load payment report.\n\n{error}")
             self.summary_var.set("Failed to load payment report")
 
@@ -331,8 +454,14 @@ class ReportPage(ctk.CTkFrame):
                     f"{row.TotalSpent}"
                 )
 
+            self._set_export_report(
+                "Customer Report", ("Customer ID", "Customer", "Orders", "Total Spent"),
+                [(row.CustomerID, f"{row.FirstName} {row.LastName or ''}".strip(), row.TotalOrders, row.TotalSpent) for row in rows],
+            )
+
             self._show_report("Customer Report", "\n".join(lines), len(rows))
         except Exception as error:
+            self._clear_export_report()
             self._set_report_text(f"Failed to load customer report.\n\n{error}")
             self.summary_var.set("Failed to load customer report")
 
@@ -368,7 +497,13 @@ class ReportPage(ctk.CTkFrame):
                     f"{row.ProductsSupplied}"
                 )
 
+            self._set_export_report(
+                "Supplier Report", ("Supplier ID", "Supplier", "Products Supplied"),
+                [(row.SupplierID, row.SupplierName, row.ProductsSupplied) for row in rows],
+            )
+
             self._show_report("Supplier Report", "\n".join(lines), len(rows))
         except Exception as error:
+            self._clear_export_report()
             self._set_report_text(f"Failed to load supplier report.\n\n{error}")
             self.summary_var.set("Failed to load supplier report")

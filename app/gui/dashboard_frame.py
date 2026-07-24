@@ -16,7 +16,7 @@ class MetricCard(ctk.CTkFrame):
             corner_radius=18,
             border_width=1,
             border_color=accent,
-            height=120
+            height=132
         )
         self.grid_propagate(False)
         self.grid_columnconfigure(0, weight=1)
@@ -28,19 +28,22 @@ class MetricCard(ctk.CTkFrame):
             text_color="#CBD5E1"
         ).grid(row=0, column=0, padx=18, pady=(16, 6), sticky="w")
 
+        value_size = 28 if len(str(value)) <= 11 else 24 if len(str(value)) <= 15 else 20
         ctk.CTkLabel(
             self,
             text=value,
-            font=("Segoe UI", 28, "bold"),
+            font=("Segoe UI", value_size, "bold"),
             text_color="white"
-        ).grid(row=1, column=0, padx=18, sticky="w")
+        ).grid(row=1, column=0, padx=18, pady=(0, 1), sticky="w")
 
         ctk.CTkLabel(
             self,
             text=note,
             font=("Segoe UI", 12),
-            text_color=accent
-        ).grid(row=2, column=0, padx=18, pady=(6, 14), sticky="w")
+            text_color=accent,
+            wraplength=220,
+            justify="left"
+        ).grid(row=2, column=0, padx=18, pady=(5, 14), sticky="w")
 
 
 class ChartCard(ctk.CTkFrame):
@@ -66,7 +69,7 @@ class ChartCard(ctk.CTkFrame):
             self,
             bg="#0F172A",
             highlightthickness=0,
-            height=260
+            height=290
         )
         self.canvas.grid(row=1, column=0, padx=18, pady=(0, 18), sticky="nsew")
         self.canvas.bind("<Configure>", self._on_resize)
@@ -74,6 +77,21 @@ class ChartCard(ctk.CTkFrame):
         self.chart_kind = None
         self.chart_data = []
         self.bar_color = "#2563EB"
+
+    @staticmethod
+    def _short_label(value, limit=17):
+        value = str(value or "Unknown")
+        return value if len(value) <= limit else f"{value[:limit - 1]}…"
+
+    @staticmethod
+    def _compact_number(value):
+        value = float(value or 0)
+        absolute = abs(value)
+        if absolute >= 1000000:
+            return f"{value / 1000000:.2f}M"
+        if absolute >= 1000:
+            return f"{value / 1000:.1f}K"
+        return f"{value:,.0f}"
 
     def _on_resize(self, _event):
         if self.chart_kind == "line":
@@ -87,7 +105,7 @@ class ChartCard(ctk.CTkFrame):
         self.canvas.delete("all")
 
         width = max(self.canvas.winfo_width(), 640)
-        height = max(self.canvas.winfo_height(), 260)
+        height = max(self.canvas.winfo_height(), 290)
 
         if not points:
             self.canvas.create_text(
@@ -99,10 +117,10 @@ class ChartCard(ctk.CTkFrame):
             )
             return
 
-        left = 55
-        right = width - 20
-        top = 20
-        bottom = height - 45
+        left = 72
+        right = width - 28
+        top = 28
+        bottom = height - 62
 
         values = [float(value) for _, value in points]
         max_value = max(values) if max(values) > 0 else 1
@@ -115,7 +133,7 @@ class ChartCard(ctk.CTkFrame):
             self.canvas.create_text(
                 left - 10,
                 y,
-                text=f"{value:.0f}",
+                text=self._compact_number(value),
                 fill="#94A3B8",
                 font=("Segoe UI", 10),
                 anchor="e"
@@ -132,17 +150,12 @@ class ChartCard(ctk.CTkFrame):
             self.canvas.create_text(
                 x,
                 bottom + 16,
-                text=label,
+                text=self._short_label(label, 11),
                 fill="#CBD5E1",
-                font=("Segoe UI", 10)
+                font=("Segoe UI", 10, "bold")
             )
-            self.canvas.create_text(
-                x,
-                y - 14,
-                text=f"{float(value):.0f}",
-                fill="#E2E8F0",
-                font=("Segoe UI", 9)
-            )
+            if len(points) <= 7:
+                self.canvas.create_text(x, y - 14, text=self._compact_number(value), fill="#E2E8F0", font=("Segoe UI", 9, "bold"))
 
         if len(coordinates) >= 4:
             self.canvas.create_line(*coordinates, fill="#38BDF8", width=3, smooth=True)
@@ -154,7 +167,7 @@ class ChartCard(ctk.CTkFrame):
         self.canvas.delete("all")
 
         width = max(self.canvas.winfo_width(), 360)
-        height = max(self.canvas.winfo_height(), 260)
+        height = max(self.canvas.winfo_height(), 290)
 
         if not items:
             self.canvas.create_text(
@@ -168,8 +181,8 @@ class ChartCard(ctk.CTkFrame):
 
         left = 18
         right = width - 18
-        top = 20
-        row_height = max((height - top - 12) / len(items), 34)
+        top = 22
+        row_height = max((height - top - 16) / len(items), 34)
         max_value = max(float(value) for _, value in items) or 1
 
         for index, (label, value) in enumerate(items):
@@ -182,7 +195,7 @@ class ChartCard(ctk.CTkFrame):
             self.canvas.create_text(
                 left,
                 y + 12,
-                text=label,
+                text=self._short_label(label, 15),
                 fill="#CBD5E1",
                 font=("Segoe UI", 10),
                 anchor="w"
@@ -206,7 +219,7 @@ class ChartCard(ctk.CTkFrame):
             self.canvas.create_text(
                 right - 5,
                 y + 12,
-                text=str(value),
+                text=self._compact_number(value),
                 fill="white",
                 font=("Segoe UI", 10, "bold"),
                 anchor="e"
@@ -258,8 +271,12 @@ class TableCard(ctk.CTkFrame):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        for row in rows:
-            self.tree.insert("", "end", values=row)
+        for index, row in enumerate(rows):
+            self.tree.insert("", "end", values=row, tags=("even" if index % 2 == 0 else "odd",))
+        self.tree.tag_configure("even", background="#162032", foreground="#E2E8F0")
+        self.tree.tag_configure("odd", background="#111827", foreground="#CBD5E1")
+        style = ttk.Style()
+        style.configure("Treeview", rowheight=29, font=("Segoe UI", 10))
 
 
 class DashboardFrame(ctk.CTkFrame):
@@ -326,7 +343,7 @@ class DashboardFrame(ctk.CTkFrame):
         self.metric_frame.grid(row=1, column=0, columnspan=4, padx=24, pady=(0, 18), sticky="ew")
 
         for column in range(4):
-            self.metric_frame.grid_columnconfigure(column, weight=1)
+            self.metric_frame.grid_columnconfigure(column, weight=1, uniform="metric")
 
     def _build_chart_section(self):
         self.sales_chart = ChartCard(self.scroll_frame, "Sales Trend (Last 7 Days)")
@@ -383,8 +400,27 @@ class DashboardFrame(ctk.CTkFrame):
         rows = self._fetch_rows(query, params)
         return rows[0] if rows else None
 
-    def _format_currency(self, amount):
-        return f"Rs {float(amount):,.2f}"
+    @staticmethod
+    def _format_currency(amount):
+        """Use compact Indian currency notation so KPI values remain readable."""
+        amount = float(amount or 0)
+        absolute = abs(amount)
+        if absolute >= 10000000:
+            return f"₹{amount / 10000000:.2f} Cr"
+        if absolute >= 100000:
+            return f"₹{amount / 100000:.2f} L"
+        if absolute >= 1000:
+            return f"₹{amount / 1000:.1f} K"
+        return f"₹{amount:,.2f}"
+
+    @staticmethod
+    def _format_count(value):
+        value = int(value or 0)
+        if value >= 1000000:
+            return f"{value / 1000000:.2f}M"
+        if value >= 1000:
+            return f"{value / 1000:.1f}K"
+        return str(value)
 
     def _load_metrics(self):
         row = self._fetch_one(
@@ -402,25 +438,30 @@ class DashboardFrame(ctk.CTkFrame):
         )
 
         return {
-            "Products": (row.total_products, "#3B82F6", "Active catalog items"),
-            "Customers": (row.total_customers, "#10B981", "Registered buyers"),
-            "Orders": (row.total_orders, "#F59E0B", "All recorded orders"),
+            "Products": (self._format_count(row.total_products), "#3B82F6", "Active catalog items"),
+            "Customers": (self._format_count(row.total_customers), "#10B981", "Registered buyers"),
+            "Orders": (self._format_count(row.total_orders), "#F59E0B", "All recorded orders"),
             "Revenue": (self._format_currency(row.revenue), "#EF4444", "Completed payments only"),
-            "Payments": (row.total_payments, "#06B6D4", "Captured payment records"),
-            "Low Stock": (row.low_stock, "#F97316", "Needs reorder attention"),
-            "Pending Orders": (row.pending_orders, "#A78BFA", "Awaiting action"),
-            "Suppliers": (row.total_suppliers, "#22C55E", "Active vendor records"),
+            "Payments": (self._format_count(row.total_payments), "#06B6D4", "Captured payment records"),
+            "Low Stock": (self._format_count(row.low_stock), "#F97316", "Needs reorder attention"),
+            "Pending Orders": (self._format_count(row.pending_orders), "#A78BFA", "Awaiting action"),
+            "Suppliers": (self._format_count(row.total_suppliers), "#22C55E", "Active vendor records"),
         }
 
     def _load_sales_trend(self):
         rows = self._fetch_rows(
             """
-            SELECT
-                CONVERT(date, PaymentDate) AS payment_day,
-                SUM(Amount) AS revenue
-            FROM Payments
-            WHERE PaymentStatus = 'Completed'
-            GROUP BY CONVERT(date, PaymentDate)
+            SELECT TOP 7
+                payment_day,
+                revenue
+            FROM (
+                SELECT
+                    CONVERT(date, PaymentDate) AS payment_day,
+                    SUM(Amount) AS revenue
+                FROM Payments
+                WHERE PaymentStatus = 'Completed'
+                GROUP BY CONVERT(date, PaymentDate)
+            ) AS payment_days
             ORDER BY payment_day DESC
             """
         )
@@ -517,7 +558,8 @@ class DashboardFrame(ctk.CTkFrame):
 
         for title, (value, color, note) in metrics.items():
             card = MetricCard(self.metric_frame, title, str(value), color, note)
-            card.grid(row=row, column=column, padx=10, pady=10, sticky="nsew")
+            card.grid(row=row, column=column, padx=9, pady=9, sticky="nsew")
+            self.metric_frame.grid_rowconfigure(row, weight=1)
 
             column += 1
             if column == 4:

@@ -10,6 +10,7 @@ from gui.pages.payment_page import PaymentPage
 from gui.pages.product_page import ProductPage
 from gui.pages.report_page import ReportPage
 from gui.pages.supplier_page import SupplierPage
+from gui.pages.analytics_page import AnalyticsPage
 from gui.sidebar import Sidebar
 
 
@@ -52,9 +53,10 @@ class PlaceholderPage(ctk.CTkFrame):
 
 
 class MainWindow(ctk.CTk):
-    def __init__(self):
+    def __init__(self, user=None):
         super().__init__()
 
+        self.user = user or {"username": "User", "role": "Employee"}
         self.current_page = None
         self.page_config = {
             "products": {
@@ -107,6 +109,11 @@ class MainWindow(ctk.CTk):
                 "page": DashboardFrame,
                 "status": "Dashboard loaded",
             },
+            "analytics": {
+                "title": "Data Analytics",
+                "page": AnalyticsPage,
+                "status": "Analytics loaded",
+            },
         }
 
         self.title("ShopSync")
@@ -145,6 +152,7 @@ class MainWindow(ctk.CTk):
 
         self.subtitle = ctk.CTkLabel(
             self.header,
+            text=f"Signed in as {self.user['username']} ({self.user['role']})",
             font=("Segoe UI", 10),
             text_color="#CBD5E1"
         )
@@ -246,6 +254,9 @@ class MainWindow(ctk.CTk):
 
     def show_reports(self):
         self.open_section("reports")
+
+    def show_analytics(self):
+        self.open_section("analytics")
 
 
 if __name__ == "__main__":
